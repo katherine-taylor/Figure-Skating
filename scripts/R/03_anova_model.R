@@ -13,9 +13,8 @@ judge_performance_scores <-
 judges <- read_csv(here::here("data/judges.csv"))
 
 # set up anova data frame (or KW) - by judges
-#' TODO: otherize countries that don't have
-#' corresponding judges
 
+# TODO: Add more advanced country diff
 anova_df <- judge_performance_scores |>
   left_join(judges, by = c("program", "judge" = "clean_role")) |>
   select(clean_judge_name, judge_country, program, nation, final_score) |>
@@ -26,6 +25,7 @@ anova_df <- judge_performance_scores |>
 judge_country == nation ~ "SAME",
 TRUE ~ "DIFF"),
 country_match = parse_factor(country_match),
+country_match = relevel(country_match, ref = "SAME"),
     judge_country = case_when(
       str_detect(judge_country, "AUS") ~ "AUS",
       str_detect(judge_country, "BEL") ~ "BEL",
@@ -47,9 +47,12 @@ country_match = parse_factor(country_match),
       str_detect(judge_country, "SVK") ~ "SVK",
       str_detect(judge_country, "TUR") ~ "TUR",
       str_detect(judge_country, "UKR") ~ "UKR",
+      str_detect(judge_country, "USA") ~ "USA",
+      str_detect(judge_country, "UZB") ~ "UZB",
       TRUE ~ "OTHER"
       ),
     judge_country = parse_factor(judge_country),
+    judge_country = relevel(judge_country, ref = "USA"),
     nation = case_when(
       str_detect(nation, "AUS") ~ "AUS",
       str_detect(nation, "BEL") ~ "BEL",
@@ -71,9 +74,12 @@ country_match = parse_factor(country_match),
       str_detect(nation, "SVK") ~ "SVK",
       str_detect(nation, "TUR") ~ "TUR",
       str_detect(nation, "UKR") ~ "UKR",
+      str_detect(nation, "USA") ~ "USA",
+      str_detect(nation, "UZB") ~ "UZB",
       TRUE ~ "OTHER"
     ),
-    nation = parse_factor(nation)
+    nation = parse_factor(nation),
+    nation = relevel(nation, ref = "USA")
   )
 
 # create lm model - separate model for event
@@ -98,12 +104,17 @@ lm_models |>
   geom_point()
 
 # send diagnostic plots to output folder
+single_models <- lm_models |>
+  group_by(program) |>
+  slice(1) |>
+  ungroup()
+
 save_diag_plots <- function(num) {
   png(paste0(here::here("output/diagnostic_plots/"),
              "model_",formatC(num, flag = "0",digits = 1),
              "_diagnostics.png", sep = ""))
   par(mfrow = c(2,2))
-  plot(lm_models$fit[[num]])
+  plot(single_models$fit[[num]])
   par(mfrow = c(1,1))
   dev.off()
 }
